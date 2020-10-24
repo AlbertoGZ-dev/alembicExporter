@@ -1,1 +1,4 @@
 .DS_Store
+.pyc
+alembicExporter.pyc
+__init__.pyc
