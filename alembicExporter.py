@@ -10,8 +10,6 @@ Email: albertogzonline@gmail.com
 
 from PySide2 import QtCore, QtWidgets, QtGui
 from shiboken2 import wrapInstance
-from os import stat
-from collections import OrderedDict
 
 import maya.cmds as cmds
 import maya.mel as mel
@@ -20,8 +18,7 @@ import maya.api.OpenMaya as om
 import shiboken2
 
 import os
-import datetime
-import re
+
 
 
 # GENERAL VARS
