@@ -1,7 +1,7 @@
 # alembicExporter
 alembicExporter is a tool to automatize alembic exports for BWater pipeline on demand requests.
 
-<img src=""></img>
+<img src="https://github.com/AlbertoGZ-dev/alembicExporter/blob/main/documentation/alembicExporter.png"></img>
 
 ## Setup
 
