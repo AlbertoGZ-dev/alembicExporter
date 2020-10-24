@@ -18,23 +18,30 @@ import maya.api.OpenMaya as om
 import shiboken2
 
 import os
+import platform
+import subprocess
 
 
 
 # GENERAL VARS
 version = '0.1.0'
-winWidth = 300
-winHeight = 300
+winWidth = 350
+winHeight = 250
 red = '#872323'
 green = '#207527'
 
-# BWATER VARS 
+# BWATER VARS
 exportDir = '04_FILES'
 mayaExt = '.ma'
 
-# VARS
+# MAYA VARS
 fStart = cmds.playbackOptions(q=True, animationStartTime=True)
 fEnd = cmds.playbackOptions(q=True, animationEndTime=True)
+# Get scene path
+fullScenePath = cmds.file(q=True, sn=True, shortName=False)
+mayaSceneName = cmds.file(q=True, sn=True, shortName=True)
+mayaScenePath = fullScenePath.replace(mayaSceneName, '')
+mayaScenePathClean = mayaScenePath.replace('v01', exportDir)
 
 
 
@@ -99,13 +106,13 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.objectsQList.itemClicked.connect(self.objectSel)
 
         # Button for ADD items to list
-        self.addItemsBtn = QtWidgets.QPushButton('Add Items')
+        self.addItemsBtn = QtWidgets.QPushButton('Add selected items')
         self.addItemsBtn.setEnabled(True)
         self.addItemsBtn.setMinimumWidth(100)
         self.addItemsBtn.clicked.connect(self.addSelItems)
 
         # Button for CLEAR objects list
-        self.clearItemsBtn = QtWidgets.QPushButton('Clear')
+        self.clearItemsBtn = QtWidgets.QPushButton('Clear list')
         self.clearItemsBtn.setEnabled(True)
         self.clearItemsBtn.setMinimumWidth(100)
         self.clearItemsBtn.clicked.connect(self.clearItems)
@@ -135,7 +142,14 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.fend.setValue(fEnd)
 
         # Filename for export and group
-        self.filenameBox = QtWidgets.QLineEdit('Filename.abc', self)
+        self.filenameBox = QtWidgets.QLineEdit(self)
+        self.filenameBox.setText('AlembicFilename')
+        self.filenameBox.textChanged.connect(self.filename)
+
+        # Button open export FOLDER
+        self.exportFolderBtn = QtWidgets.QPushButton('Open export folder')
+        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()) + '.abc' )
+        self.exportFolderBtn.clicked.connect(self.openFolder)
 
         # Button for EXPORT
         self.exportBtn = QtWidgets.QPushButton('Export')
@@ -182,6 +196,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         layout1A.addWidget(self.fend, 2,1)
         
         layout1B.addWidget(self.filenameBox)
+        layout1B.addWidget(self.exportFolderBtn)
         layout1B.addWidget(self.exportBtn)
         
         layout2B.addWidget(self.objectsFilterBox)
@@ -191,12 +206,32 @@ class alembicExporter(QtWidgets.QMainWindow):
         layout3.addWidget(self.objectViewer)
         
         self.resize(winWidth, winHeight)
+        #self.statusBar.showMessage('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()))
+        #
+        
+
 
 
 
     
     ### FUNCTIONS
     #
+
+    # Alembic filename
+    def filename(self):
+        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()) + '.abc' )
+        return
+
+    # Open export folder
+    def openFolder(self):
+        if platform.system() == "Windows":
+            os.startfile(mayaScenePathClean)
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", mayaScenePathClean])
+        else:
+            subprocess.Popen(["xdg-open", mayaScenePathClean])
+        return
+
     # Subdiv checkbox controls
     def checkboxControls(self):
         if self.subdivCheck.isChecked():
@@ -269,9 +304,14 @@ class alembicExporter(QtWidgets.QMainWindow):
 
     ### EXPORT ACTION
     def export(self):
+        abcFileName = str(self.filenameBox.text())
+        exportPath = mayaScenePathClean + abcFileName + '.abc'
+
         if self.objectsQList.count() <= 0:
             self.statusBar.setStyleSheet('background-color:' + red)
             self.statusBar.showMessage('List empty. You must add items before', 4000)
+            #self.statusBar.showMessage(exportPath)
+
         else:
 
             # Select items in list
@@ -280,26 +320,17 @@ class alembicExporter(QtWidgets.QMainWindow):
                 items.append(str(self.objectsQList.item(i).text()))
             cmds.select(items)
             
-            # Get scene path
-            fullScenePath = cmds.file(q=True, sn=True, shortName=False)
-            mayaSceneName = cmds.file(q=True, sn=True, shortName=True)
-            mayaScenePath = fullScenePath.replace(mayaSceneName, '')
-            mayaScenePathClean = mayaScenePath.replace('v01', '04_FILES')
-
-            start = 1
-            end = 1
-            abcFileName = str(self.filenameBox.text()).lower()
-            exportPath = mayaScenePathClean + abcFileName
-
             # Apply subdivision to mesh
             iterations = self.subdivIterations.value()
             if self.subdivCheck.isChecked():
                 for item in items:
                     cmds.polySmooth(item, dv=iterations)
 
+            frameStart = self.fstart.value()
+            frameEnd = self.fend.value()
             group = cmds.group(items, n=abcFileName)
 
-            command = '-frameRange ' + str(start) + ' ' + str(end) + ' -uvWrite -worldSpace ' + '-root ' + str(group) + ' -file ' + str(exportPath)
+            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(group) + ' -file ' + str(exportPath)
             cmds.AbcExport ( j = command )
 
             cmds.ungroup(group)
@@ -312,43 +343,9 @@ class alembicExporter(QtWidgets.QMainWindow):
 
 
 
-
-
-
-    '''
-    ### Actions for export button
-    def export_tmp(self):
-        # Check if any objects is selected; then import them
-        if self.objectsQList.currentItem():
-            try:
-                mel.eval('MLdeleteUnused;')
-                cmds.select(objs)
-                cmds.group(n=asset+'sel1', w=True)
-                self.removePrefix()
-                self.cleanScene()
-                self.objectsQList.clear()
-                self.objectUnload()
-                self.statusBar.setStyleSheet('background-color:' + green)
-                self.statusBar.showMessage('Selected objects from model imported successfully!', 4000)
-            except:
-                self.statusBar.setStyleSheet('background-color:' + red)
-                self.statusBar.showMessage('Object(s) with same name already in scene', 4000)
-        # If no object select then import all model
-        elif self.assetQList.currentItem():
-            mel.eval('MLdeleteUnused;')
-            cmds.file(sceneFullPath, i=True, gr=True, dns=False, gn=str(asset+'tmp1'))
-            self.removePrefix()
-            self.cleanScene()
-            self.statusBar.setStyleSheet('background-color:' + green)
-            self.statusBar.showMessage('Model imported successfully!', 4000)
-        else:
-            self.statusBar.setStyleSheet('background-color:' + red)
-            self.statusBar.showMessage('No scene selected', 4000)
-    '''
-
     def hideViewer(self):
         self.objectViewer.setVisible(False)
-        winWidth = 300
+        winWidth = 350
         self.resize(winWidth, winHeight)
 
 
@@ -364,7 +361,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         if self.objectViewCheckbox.isChecked():
             
             self.objectViewer.setVisible(True)
-            winWidth = 550
+            winWidth = 600
             self.resize(winWidth, winHeight)
 
             if self.objectsQList.currentItem():
