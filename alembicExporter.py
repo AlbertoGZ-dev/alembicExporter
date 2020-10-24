@@ -21,7 +21,6 @@ import shiboken2
 
 import os
 import datetime
-import time
 import re
 
 
