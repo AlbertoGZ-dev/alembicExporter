@@ -38,10 +38,8 @@ mayaExt = '.ma'
 fStart = cmds.playbackOptions(q=True, animationStartTime=True)
 fEnd = cmds.playbackOptions(q=True, animationEndTime=True)
 # Get scene path
-fullScenePath = cmds.file(q=True, sn=True, shortName=False)
-mayaSceneName = cmds.file(q=True, sn=True, shortName=True)
-mayaScenePath = fullScenePath.replace(mayaSceneName, '')
-mayaScenePathClean = mayaScenePath.replace('v01', exportDir)
+mayaScenePathFull = cmds.file(q=True, sn=True, shortName=False)
+mayaScenePathStrip = str('/'.join(mayaScenePathFull.split("/")[0:8]) + '/' + exportDir + '/')
 
 
 
@@ -305,7 +303,7 @@ class alembicExporter(QtWidgets.QMainWindow):
     ### EXPORT ACTION
     def export(self):
         abcFileName = str(self.filenameBox.text())
-        exportPath = mayaScenePathClean + abcFileName + '.abc'
+        exportPath = mayaScenePathStrip + abcFileName + '.abc'
 
         if self.objectsQList.count() <= 0:
             self.statusBar.setStyleSheet('background-color:' + red)
@@ -328,12 +326,17 @@ class alembicExporter(QtWidgets.QMainWindow):
 
             frameStart = self.fstart.value()
             frameEnd = self.fend.value()
-            group = cmds.group(items, n=abcFileName)
+            
+            # Duplicate selected items to avoid "Read-only parents lock state" 
+            # allowing make the temp group as root for .abc export
+            cmds.duplicate(items)
+            tempSelection = cmds.ls(selection=True)
+            tempGroup = cmds.group(tempSelection, n=abcFileName)
 
-            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(group) + ' -file ' + str(exportPath)
+            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(tempGroup) + ' -file ' + str(exportPath)
             cmds.AbcExport ( j = command )
 
-            cmds.ungroup(group)
+            cmds.delete(tempGroup)
 
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Alembic exported successfully!', 4000)
