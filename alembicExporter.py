@@ -1,11 +1,11 @@
 '''
------------------------------------------
-alembicExporter is a toolset to automatize 
-alembic exports for BWater pipeline.
+-----------------------------------------------
+alembicExporter is a tool to automatize alembic 
+exports for BWater pipeline on demand requests.
 
 Autor: AlbertoGZ
 Email: albertogzonline@gmail.com
------------------------------------------
+-----------------------------------------------
 '''
 
 from PySide2 import QtCore, QtWidgets, QtGui
@@ -23,18 +23,24 @@ import subprocess
 
 
 
-# GENERAL VARS
+''' 
+-----------------------------------
+            VARIABLES
+-----------------------------------
+'''
+### GENERAL VARS
 version = '0.1.0'
 winWidth = 350
 winHeight = 250
 red = '#872323'
 green = '#207527'
 
-# BWATER VARS
+### BWATER VARS
 exportDir = '04_FILES'
 mayaExt = '.ma'
 
-# MAYA VARS
+### MAYA VARS
+# Get frame start and frame end from timeline
 fStart = cmds.playbackOptions(q=True, animationStartTime=True)
 fEnd = cmds.playbackOptions(q=True, animationEndTime=True)
 # Get scene path
@@ -54,16 +60,25 @@ class alembicExporter(QtWidgets.QMainWindow):
     def __init__(self, parent=getMainWindow()):
         super(alembicExporter, self).__init__(parent, QtCore.Qt.WindowStaysOnTopHint)
 
-        # Creates object, Title Name and Adds a QtWidget as our central widget/Main Layout
+        ''' 
+        -----------------------------------
+                    UI WINDOW
+        -----------------------------------
+        '''
         self.setObjectName('alembicExporterUI')
         self.setWindowTitle('Alembic Exporter' + ' ' + 'v' + version)
+        
+
+        ''' 
+        -----------------------------------
+                    UI LAYOUT
+        -----------------------------------
+        '''
         mainLayout = QtWidgets.QWidget(self)
         self.setCentralWidget(mainLayout)
-        
-        # Adding a Horizontal layout to divide the UI in columns
         columns = QtWidgets.QHBoxLayout(mainLayout)
 
-        # Creating N vertical layout
+        # Creating vertical layouts for each column
         self.col1 = QtWidgets.QVBoxLayout()
         self.col2 = QtWidgets.QVBoxLayout()
         self.col3 = QtWidgets.QVBoxLayout()
@@ -73,35 +88,37 @@ class alembicExporter(QtWidgets.QMainWindow):
         columns.addLayout(self.col2, 1)
         columns.addLayout(self.col3, 3)
         
-        layout1 = QtWidgets.QVBoxLayout()
-        layout1A = QtWidgets.QGridLayout()
-        layout1B = QtWidgets.QVBoxLayout()
-        layout2B = QtWidgets.QVBoxLayout()
-        layout3 = QtWidgets.QVBoxLayout()
+        layout1A = QtWidgets.QVBoxLayout()
+        layout1B = QtWidgets.QGridLayout()
+        layout1C = QtWidgets.QVBoxLayout()
+        layout2A = QtWidgets.QVBoxLayout()
+        layout3A = QtWidgets.QVBoxLayout()
 
-        self.col1.addLayout(layout1)
         self.col1.addLayout(layout1A)
         self.col1.addLayout(layout1B)
-        self.col2.addLayout(layout2B)
-        self.col3.addLayout(layout3)
+        self.col1.addLayout(layout1C)
+        self.col2.addLayout(layout2A)
+        self.col3.addLayout(layout3A)
 
+        
+        ''' 
+        -----------------------------------
+                    UI ELEMENTS
+        -----------------------------------
+        '''
 
-
-
-        #### UI ELEMENTS
-        #
         # FilterBox inpqut for objects list
-        self.objectsFilterBox = QtWidgets.QLineEdit('', self)
-        self.objectRegex = QtCore.QRegExp('[0-9A-Za-z_]+')
-        self.objectValidator = QtGui.QRegExpValidator(self.objectRegex)
-        self.objectsFilterBox.setValidator(self.objectValidator)
-        self.objectsFilterBox.textChanged.connect(self.objectFilter)
+        self.itemsFilter = QtWidgets.QLineEdit('', self)
+        self.itemsRegex = QtCore.QRegExp('[0-9A-Za-z_]+')
+        self.itemsValidator = QtGui.QRegExpValidator(self.itemsRegex)
+        self.itemsFilter.setValidator(self.itemsValidator)
+        self.itemsFilter.textChanged.connect(self.objectFilter)
 
         # List of objects
-        self.objectsQList = QtWidgets.QListWidget(self)
-        self.objectsQList.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.objectsQList.setMinimumWidth(170)
-        self.objectsQList.itemClicked.connect(self.objectSel)
+        self.itemsList = QtWidgets.QListWidget(self)
+        self.itemsList.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.itemsList.setMinimumWidth(170)
+        self.itemsList.itemClicked.connect(self.objectSel)
 
         # Button for ADD items to list
         self.addItemsBtn = QtWidgets.QPushButton('Add selected items')
@@ -109,7 +126,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.addItemsBtn.setMinimumWidth(100)
         self.addItemsBtn.clicked.connect(self.addSelItems)
 
-        # Button for CLEAR objects list
+        # Button for CLEAR items list
         self.clearItemsBtn = QtWidgets.QPushButton('Clear list')
         self.clearItemsBtn.setEnabled(True)
         self.clearItemsBtn.setMinimumWidth(100)
@@ -139,14 +156,14 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.fend.setRange(0,9999)
         self.fend.setValue(fEnd)
 
-        # Filename for export and group
+        # Name for alembic file and group
         self.filenameBox = QtWidgets.QLineEdit(self)
         self.filenameBox.setText('AlembicFilename')
         self.filenameBox.textChanged.connect(self.filename)
 
-        # Button open export FOLDER
+        # Button for open export FOLDER
         self.exportFolderBtn = QtWidgets.QPushButton('Open export folder')
-        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()) + '.abc' )
+        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathStrip + str(self.filenameBox.text()) + '.abc' )
         self.exportFolderBtn.clicked.connect(self.openFolder)
 
         # Button for EXPORT
@@ -182,63 +199,60 @@ class alembicExporter(QtWidgets.QMainWindow):
         
 
         ### Add elements to layout
-        #
-        layout1.addWidget(self.addItemsBtn)
-        layout1.addWidget(self.clearItemsBtn)
+        layout1A.addWidget(self.addItemsBtn)
+        layout1A.addWidget(self.clearItemsBtn)
         
-        layout1A.addWidget(self.subdivCheck)
-        layout1A.addWidget(self.subdivIterations, 0,1)
-        layout1A.addWidget(self.timelineStart)
-        layout1A.addWidget(self.fstart, 1,1)
-        layout1A.addWidget(self.timelineEnd)
-        layout1A.addWidget(self.fend, 2,1)
+        layout1B.addWidget(self.subdivCheck)
+        layout1B.addWidget(self.subdivIterations, 0,1)
+        layout1B.addWidget(self.timelineStart)
+        layout1B.addWidget(self.fstart, 1,1)
+        layout1B.addWidget(self.timelineEnd)
+        layout1B.addWidget(self.fend, 2,1)
         
-        layout1B.addWidget(self.filenameBox)
-        layout1B.addWidget(self.exportFolderBtn)
-        layout1B.addWidget(self.exportBtn)
+        layout1C.addWidget(self.filenameBox)
+        layout1C.addWidget(self.exportFolderBtn)
+        layout1C.addWidget(self.exportBtn)
         
-        layout2B.addWidget(self.objectsFilterBox)
-        layout2B.addWidget(self.objectsQList)
-        layout2B.addWidget(self.objectViewCheckbox)
+        layout2A.addWidget(self.itemsFilter)
+        layout2A.addWidget(self.itemsList)
+        layout2A.addWidget(self.objectViewCheckbox)
         
-        layout3.addWidget(self.objectViewer)
+        layout3A.addWidget(self.objectViewer)
         
         self.resize(winWidth, winHeight)
-        #self.statusBar.showMessage('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()))
-        #
+        #self.statusBar.showMessage('Export folder: ' + mayaScenePathStrip + str(self.filenameBox.text()))
+
+
         
+    ''' 
+    -----------------------------------
+                FUNCTIONS
+    -----------------------------------
+    '''
 
-
-
-
-    
-    ### FUNCTIONS
-    #
-
-    # Alembic filename
+    ### Alembic filename
     def filename(self):
-        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathClean + str(self.filenameBox.text()) + '.abc' )
+        self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathStrip + str(self.filenameBox.text()) + '.abc' )
         return
 
-    # Open export folder
+    ### Open export folder
     def openFolder(self):
         if platform.system() == "Windows":
-            os.startfile(mayaScenePathClean)
+            os.startfile(mayaScenePathStrip)
         elif platform.system() == "Darwin":
-            subprocess.Popen(["open", mayaScenePathClean])
+            subprocess.Popen(["open", mayaScenePathStrip])
         else:
-            subprocess.Popen(["xdg-open", mayaScenePathClean])
+            subprocess.Popen(["xdg-open", mayaScenePathStrip])
         return
 
-    # Subdiv checkbox controls
+    ### Subdiv checkbox controls
     def checkboxControls(self):
         if self.subdivCheck.isChecked():
             self.subdivIterations.setEnabled(True)
         else:
             self.subdivIterations.setEnabled(False)
     
-
-    # Frame range controls
+    ### Frame range controls
     def fstartControls(self):
         if self.timelineStart.isChecked():
             self.fstart.setValue(fStart)
@@ -257,7 +271,7 @@ class alembicExporter(QtWidgets.QMainWindow):
             self.fend.setEnabled(True)
         return
 
-    ### Add select items to list
+    ### Add selected items to list
     def addSelItems(self):
         if cmds.ls(sl=False):
             self.statusBar.setStyleSheet('background-color:' + red)
@@ -266,8 +280,8 @@ class alembicExporter(QtWidgets.QMainWindow):
         if cmds.ls(sl=True):
             items = cmds.ls(selection=True, visible=True)
             shapes = cmds.listRelatives(items, shapes=True, type='mesh')
-            self.objectsQList.clear()
-            self.objectsQList.addItems(shapes)
+            self.itemsList.clear()
+            self.itemsList.addItems(shapes)
             cmds.select(clear=True)
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Added items: ' + str(items), 4000)
@@ -275,47 +289,43 @@ class alembicExporter(QtWidgets.QMainWindow):
 
     ### Clear list
     def clearItems(self):
-        if self.objectsQList.count() <= 0:
+        if self.itemsList.count() <= 0:
             self.statusBar.setStyleSheet('background-color:' + red)
             self.statusBar.showMessage('Nothing done! List already empty', 4000)
         else:
-            self.objectsQList.clear()
+            self.itemsList.clear()
             cmds.select(clear=True)
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Clear list successfully!', 4000)
         return
     
-    ### Filter by typing for OBJECTS list
+    ### Filter by typing for items list
     def objectFilter(self):
-        textFilter = str(self.objectsFilterBox.text()).lower()
+        textFilter = str(self.itemsFilter.text()).lower()
         if not textFilter:
-            for row in range(self.objectsQList.count()):
-                self.objectsQList.setRowHidden(row, False)
+            for row in range(self.itemsList.count()):
+                self.itemsList.setRowHidden(row, False)
         else:
-            for row in range(self.objectsQList.count()):
-                if textFilter in str(self.objectsQList.item(row).text()).lower():
-                    self.objectsQList.setRowHidden(row, False)
+            for row in range(self.itemsList.count()):
+                if textFilter in str(self.itemsList.item(row).text()).lower():
+                    self.itemsList.setRowHidden(row, False)
                 else:
-                    self.objectsQList.setRowHidden(row, True)
-
-    
+                    self.itemsList.setRowHidden(row, True)
 
     ### EXPORT ACTION
     def export(self):
         abcFileName = str(self.filenameBox.text())
         exportPath = mayaScenePathStrip + abcFileName + '.abc'
 
-        if self.objectsQList.count() <= 0:
+        if self.itemsList.count() <= 0:
             self.statusBar.setStyleSheet('background-color:' + red)
             self.statusBar.showMessage('List empty. You must add items before', 4000)
             #self.statusBar.showMessage(exportPath)
-
         else:
-
             # Select items in list
             items = []
-            for i in range(self.objectsQList.count()):
-                items.append(str(self.objectsQList.item(i).text()))
+            for i in range(self.itemsList.count()):
+                items.append(str(self.itemsList.item(i).text()))
             cmds.select(items)
             
             # Apply subdivision to mesh
@@ -340,26 +350,17 @@ class alembicExporter(QtWidgets.QMainWindow):
 
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Alembic exported successfully!', 4000)
-
         return
 
-
-
-
-    def hideViewer(self):
-        self.objectViewer.setVisible(False)
-        winWidth = 350
-        self.resize(winWidth, winHeight)
-
-
+    ### Create cam for viewer
     def createCam(self):
             global objectViewerCam
             objectViewerCam = 'objectViewerCam1'
             cmds.camera(name=objectViewerCam)
             cmds.xform(t=(28.000, 21.000, 28.000), ro=(-27.938, 45.0, -0.0) )
             cmds.hide(objectViewerCam)
-
-
+    
+    ### Show viewer in the GUI
     def showViewer(self):
         if self.objectViewCheckbox.isChecked():
             
@@ -367,7 +368,7 @@ class alembicExporter(QtWidgets.QMainWindow):
             winWidth = 600
             self.resize(winWidth, winHeight)
 
-            if self.objectsQList.currentItem():
+            if self.itemsList.currentItem():
                 #cmds.showHidden(grpTemp+'*')
                 cmds.select(objs)
                 cmds.isolateSelect(viewer, s=False)
@@ -377,14 +378,17 @@ class alembicExporter(QtWidgets.QMainWindow):
         else:
             self.hideViewer()
 
+    ### Hide viewer in the GUI
+    def hideViewer(self):
+            self.objectViewer.setVisible(False)
+            winWidth = 350
+            self.resize(winWidth, winHeight)
 
-
-    
-    ### Select objects in objects list
+    ### Actions for item(s) selected in list
     def objectSel(self, item):
         self.objectViewCheckbox.setEnabled(True)
         global objs
-        items = self.objectsQList.selectedItems()
+        items = self.itemsList.selectedItems()
         objs = []
         for i in list(items):
             objs.append(i.text())
@@ -396,45 +400,15 @@ class alembicExporter(QtWidgets.QMainWindow):
         cmds.isolateSelect(viewer, s=True)
         cmds.viewFit(objectViewerCam)
         #cmds.refresh()
-        
-    '''
-    ### Actions for list objects button
-    def objectLoad(self):
-        global grpTemp
-        grpTemp = '___tmp___'
-        
-        if self.assetQList.currentItem():
-            mel.eval('MLdeleteUnused;')
-            cmds.file(sceneFullPath, i=True, gr=True, dns=False, gn=grpTemp, ifr=True)
-            cmds.select(grpTemp+'*')
-            cmds.hide(grpTemp+'*')
-            #mel.eval('setAttr ___tmp___.hiddenInOutliner true;AEdagNodeCommonRefreshOutliners();')
-            objectList = cmds.listRelatives(grpTemp, s=False)
-            objectList.sort()
-            self.objectsQList.addItems(objectList)
-            self.objectViewCheckbox.setEnabled(True)
-        else:
-            self.statusBar.setStyleSheet('background-color:' + red)
-            self.statusBar.showMessage('No object selected', 4000)
-        
-        self.addItemsBtn.setEnabled(False)
-        self.clearItemsBtn.setEnabled(True)
-    
-    '''
 
-    def restoreLabels(self):
-        self.sceneLabel.setText('Scene: ')
-        self.sizeLabel.setText('Size: ')
-        self.dateLabel.setText('Date: ')
-    
-
+    ### Restore status bar
     def statusChanged(self, args):
         if not args:
             self.statusBar.setStyleSheet('background-color:none')
       
-
+    ### Remove temporary group
     def objectUnload(self):
-        self.objectsQList.clear()
+        self.itemsList.clear()
         self.addItemsBtn.setEnabled(True)
         self.clearItemsBtn.setEnabled(False)
         self.objectViewCheckbox.setEnabled(False)
@@ -446,7 +420,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         if cmds.objExists('___tmp___*'):
             cmds.delete('___tmp___*')
 
-    
+    ### Remove temporary elements created in scene
     def cleanScene(self):
         node1 = '*_hyperShadePrimaryNodeEditorSavedTabsInfo*'
         node2 = '*ConfigurationScriptNode*'
@@ -458,8 +432,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         cmds.deleteUI(modelEditorName+'*')
         mel.eval('MLdeleteUnused;')
         
-    
-    # Prevent groupname as prefix of any node
+    ### Prevent groupname as prefix of any node
     def removePrefix(self):
         groupname = cmds.ls(asset + '_*')
         for gn in groupname:
@@ -474,6 +447,11 @@ class alembicExporter(QtWidgets.QMainWindow):
 
 
 
+''' 
+-----------------------------------
+            WAKE UP WINDOW
+-----------------------------------
+'''
 if __name__ == '__main__':
   try:
       win.close()
