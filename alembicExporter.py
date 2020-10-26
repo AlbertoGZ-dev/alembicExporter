@@ -336,17 +336,16 @@ class alembicExporter(QtWidgets.QMainWindow):
 
             frameStart = self.fstart.value()
             frameEnd = self.fend.value()
-            
-            # Duplicate selected items to avoid "Read-only parents lock state" 
-            # allowing make the temp group as root for .abc export
-            cmds.duplicate(items)
-            tempSelection = cmds.ls(selection=True)
-            tempGroup = cmds.group(tempSelection, n=abcFileName)
 
-            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(tempGroup) + ' -file ' + str(exportPath)
+            # Build a list with prefix '-root' for each item in the list
+            listExport = []
+            for item in items:
+                listExport.append('-root ' + item)
+
+            itemsToExport = " ".join(map(str, listExport))
+
+            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + itemsToExport + ' -file ' + str(exportPath)
             cmds.AbcExport ( j = command )
-
-            cmds.delete(tempGroup)
 
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Alembic exported successfully!', 4000)
