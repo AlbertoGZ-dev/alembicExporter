@@ -161,6 +161,10 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.filenameBox.setText('AlembicFilename')
         self.filenameBox.textChanged.connect(self.filename)
 
+        # Button to get name from selected item
+        self.getAbcNameBtn = QtWidgets.QPushButton('Get')
+        self.getAbcNameBtn.clicked.connect(self.getAbcName)
+
         # Button for open export FOLDER
         self.exportFolderBtn = QtWidgets.QPushButton('Open export folder')
         self.exportFolderBtn.setToolTip('Export folder: ' + mayaScenePathStrip + str(self.filenameBox.text()) + '.abc' )
@@ -209,6 +213,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         layout1B.addWidget(self.timelineEnd)
         layout1B.addWidget(self.fend, 2,1)
         
+        layout1C.addWidget(self.getAbcNameBtn)
         layout1C.addWidget(self.filenameBox)
         layout1C.addWidget(self.exportFolderBtn)
         layout1C.addWidget(self.exportBtn)
@@ -229,6 +234,25 @@ class alembicExporter(QtWidgets.QMainWindow):
                 FUNCTIONS
     -----------------------------------
     '''
+
+    ### Get Alembic filename from selected item
+    def getAbcName(self):
+        abcName = cmds.ls(sl=True)
+
+        if not abcName:
+            self.filenameBox.setText('AlembicFilename')
+            self.statusBar.setStyleSheet('background-color:' + red)
+            self.statusBar.showMessage('None selected. Setted default name', 4000) 
+        
+        elif len(abcName) > 1:
+            self.statusBar.setStyleSheet('background-color:' + red)
+            self.statusBar.showMessage('You must select one item only', 4000)
+        
+        else:
+            self.filenameBox.setText(str(abcName[0]))
+            self.statusBar.setStyleSheet('background-color:' + green)
+            self.statusBar.showMessage('Setted name from selected item', 4000)
+        return
 
     ### Alembic filename
     def filename(self):
@@ -311,6 +335,14 @@ class alembicExporter(QtWidgets.QMainWindow):
                     self.itemsList.setRowHidden(row, False)
                 else:
                     self.itemsList.setRowHidden(row, True)
+    
+    ### Subdivision control
+    def applySubdiv(self): 
+        iterations = self.subdivIterations.value()
+        if self.subdivCheck.isChecked():
+            for item in items:
+                cmds.polySmooth(item, dv=iterations)
+
 
     ### EXPORT ACTION
     def export(self):
@@ -329,23 +361,34 @@ class alembicExporter(QtWidgets.QMainWindow):
             cmds.select(items)
             
             # Apply subdivision to mesh
-            iterations = self.subdivIterations.value()
-            if self.subdivCheck.isChecked():
-                for item in items:
-                    cmds.polySmooth(item, dv=iterations)
+            self.applySubdiv()
 
             frameStart = self.fstart.value()
             frameEnd = self.fend.value()
 
+            # OPTION 1 
             # Build a list with prefix '-root' for each item in the list
             listExport = []
             for item in items:
                 listExport.append('-root ' + item)
-
             itemsToExport = " ".join(map(str, listExport))
 
-            command = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + itemsToExport + ' -file ' + str(exportPath)
-            cmds.AbcExport ( j = command )
+            # OPTION 2
+            # Duplicate selected items to avoid "Read-only parents lock state" 
+            # allowing make the temp group as root for .abc export
+            cmds.duplicate(items)
+            tempSelection = cmds.ls(selection=True)
+            tempGroup = cmds.group(tempSelection, n=abcFileName)
+
+            # OPTION 1 command
+            command1 = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + itemsToExport + ' -file ' + str(exportPath)
+            
+            # OPTION 2 command
+            command2 = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(tempGroup) + ' -file ' + str(exportPath)
+
+            cmds.AbcExport ( j = command2 )
+            
+            cmds.delete(tempGroup)
 
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Alembic exported successfully!', 4000)
