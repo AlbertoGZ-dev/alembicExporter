@@ -30,7 +30,7 @@ import subprocess
 '''
 ### GENERAL VARS
 version = '0.1.0'
-winWidth = 350
+winWidth = 400
 winHeight = 250
 red = '#872323'
 green = '#207527'
@@ -117,13 +117,13 @@ class alembicExporter(QtWidgets.QMainWindow):
         # List of objects
         self.itemsList = QtWidgets.QListWidget(self)
         self.itemsList.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.itemsList.setMinimumWidth(170)
+        self.itemsList.setMinimumWidth(200)
         self.itemsList.itemClicked.connect(self.objectSel)
 
         # Button for ADD items to list
         self.addItemsBtn = QtWidgets.QPushButton('Add selected items')
         self.addItemsBtn.setEnabled(True)
-        self.addItemsBtn.setMinimumWidth(100)
+        self.addItemsBtn.setMinimumWidth(200)
         self.addItemsBtn.clicked.connect(self.addSelItems)
 
         # Button for CLEAR items list
@@ -237,8 +237,12 @@ class alembicExporter(QtWidgets.QMainWindow):
 
     ### Get Alembic filename from selected item
     def getAbcName(self):
-        abcName = cmds.ls(sl=True)
-
+        sel = cmds.ls(sl=True)
+        
+        abcName = []
+        for i in sel:
+            abcName.append(i.split(':')[0])
+        
         if not abcName:
             self.filenameBox.setText('AlembicFilename')
             self.statusBar.setStyleSheet('background-color:' + red)
@@ -306,7 +310,14 @@ class alembicExporter(QtWidgets.QMainWindow):
             items = cmds.ls(selection=True, visible=True)
             #shapes = cmds.listRelatives(items, shapes=True, type='mesh')
             self.itemsList.clear()
+            ''' 
+            # Get only the part name before namespace
+            items = []
+            for item in sel:
+                items.append(item.split(':')[-1])
+            '''    
             self.itemsList.addItems(items)
+            
             cmds.select(clear=True)
             self.statusBar.setStyleSheet('background-color:' + green)
             self.statusBar.showMessage('Added items: ' + str(items[0]), 4000)
@@ -351,12 +362,13 @@ class alembicExporter(QtWidgets.QMainWindow):
             self.statusBar.showMessage('List empty. You must add items before', 4000)
             #self.statusBar.showMessage(exportPath)
         else:
+            '''
             # Select items in list
-            #items = []
-            #for i in range(self.itemsList.count()):
-            #    items.append(str(self.itemsList.item(i).text()))
-            #cmds.select(items)
-            
+            items = []
+            for i in range(self.itemsList.count()):
+                items.append(str(self.itemsList.item(i).text()))
+            cmds.select(items)
+            '''
             # Apply subdivision to mesh
             iterations = self.subdivIterations.value()
             if self.subdivCheck.isChecked():
@@ -380,10 +392,10 @@ class alembicExporter(QtWidgets.QMainWindow):
             tempSelection = cmds.ls(selection=True)
             tempGroup = cmds.group(tempSelection, n=abcFileName)
 
-            # OPTION 1 command
+            # Command for OPTION 1
             command1 = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + itemsToExport + ' -file ' + str(exportPath)
             
-            # OPTION 2 command
+            # Command for OPTION 2
             command2 = '-frameRange ' + str(frameStart) + ' ' + str(frameEnd) + ' -uvWrite -worldSpace ' + '-root ' + str(tempGroup) + ' -file ' + str(exportPath)
 
             cmds.AbcExport ( j = command2 )
@@ -407,7 +419,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         if self.objectViewCheckbox.isChecked():
             
             self.objectViewer.setVisible(True)
-            winWidth = 600
+            winWidth = 700
             self.resize(winWidth, winHeight)
 
             if self.itemsList.currentItem():
@@ -434,7 +446,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         objs = []
         for i in list(items):
             objs.append(i.text())
-        self.statusBar.showMessage(str(objs), 4000)
+        self.statusBar.showMessage(str(objs[0]), 4000)
 
         #cmds.showHidden(grpTemp+'*')
         cmds.select(objs)
