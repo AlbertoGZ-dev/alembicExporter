@@ -162,7 +162,7 @@ class alembicExporter(QtWidgets.QMainWindow):
         self.filenameBox.textChanged.connect(self.filename)
 
         # Button to get name from selected item
-        self.getAbcNameBtn = QtWidgets.QPushButton('Get')
+        self.getAbcNameBtn = QtWidgets.QPushButton('Get name from selection')
         self.getAbcNameBtn.clicked.connect(self.getAbcName)
 
         # Button for open export FOLDER
@@ -297,18 +297,19 @@ class alembicExporter(QtWidgets.QMainWindow):
 
     ### Add selected items to list
     def addSelItems(self):
+        global items
         if cmds.ls(sl=False):
             self.statusBar.setStyleSheet('background-color:' + red)
             self.statusBar.showMessage('You must select almost one visible mesh object', 4000)
         
         if cmds.ls(sl=True):
             items = cmds.ls(selection=True, visible=True)
-            shapes = cmds.listRelatives(items, shapes=True, type='mesh')
+            #shapes = cmds.listRelatives(items, shapes=True, type='mesh')
             self.itemsList.clear()
-            self.itemsList.addItems(shapes)
+            self.itemsList.addItems(items)
             cmds.select(clear=True)
             self.statusBar.setStyleSheet('background-color:' + green)
-            self.statusBar.showMessage('Added items: ' + str(items), 4000)
+            self.statusBar.showMessage('Added items: ' + str(items[0]), 4000)
         return
 
     ### Clear list
@@ -338,11 +339,7 @@ class alembicExporter(QtWidgets.QMainWindow):
     
     ### Subdivision control
     def applySubdiv(self): 
-        iterations = self.subdivIterations.value()
-        if self.subdivCheck.isChecked():
-            for item in items:
-                cmds.polySmooth(item, dv=iterations)
-
+        return
 
     ### EXPORT ACTION
     def export(self):
@@ -355,13 +352,16 @@ class alembicExporter(QtWidgets.QMainWindow):
             #self.statusBar.showMessage(exportPath)
         else:
             # Select items in list
-            items = []
-            for i in range(self.itemsList.count()):
-                items.append(str(self.itemsList.item(i).text()))
-            cmds.select(items)
+            #items = []
+            #for i in range(self.itemsList.count()):
+            #    items.append(str(self.itemsList.item(i).text()))
+            #cmds.select(items)
             
             # Apply subdivision to mesh
-            self.applySubdiv()
+            iterations = self.subdivIterations.value()
+            if self.subdivCheck.isChecked():
+                for item in items:
+                    cmds.polySmooth(item, dv=iterations)
 
             frameStart = self.fstart.value()
             frameEnd = self.fend.value()
